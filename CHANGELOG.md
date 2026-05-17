@@ -5,6 +5,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) ·
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-05-17
+
+### Fixed
+
+- `ha_lovelace op=save_config` now parses YAML/JSON string inputs to a
+  dict before passing to HA's `lovelace/config/save` WS command.
+  Previously a raw string could be persisted verbatim, leaving the
+  dashboard unrenderable (`Cannot use 'in' operator to search for
+  'strategy' in <stringified-config>`). Non-mapping or unparseable
+  strings now raise `ToolError` instead of bricking the dashboard.
+- `ha_lovelace op=config` now materializes the `orjson.Fragment`
+  returned by HA's lovelace handler into a plain dict. Previously
+  clients received the Python repr `"<orjson.Fragment object at 0x…>"`
+  through the MCP JSON encoder fallback.
+
+### Changed
+
+- `ha_lovelace` destructive-op error message now points to the
+  integration's Configure dialog rather than implying the flag is a
+  per-call argument.
+
 ## [1.1.0] - 2026-05-17
 
 ### Added
@@ -42,6 +63,7 @@ Initial public release.
 - Docs: quick start, user guide, developer guide, release process.
 - CI: hassfest + HACS Action + ruff + pytest on every push.
 
-[Unreleased]: https://github.com/czechbol/hass-mcp/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/czechbol/hass-mcp/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/czechbol/hass-mcp/releases/tag/v1.1.1
 [1.1.0]: https://github.com/czechbol/hass-mcp/releases/tag/v1.1.0
 [1.0.0]: https://github.com/czechbol/hass-mcp/releases/tag/v1.0.0

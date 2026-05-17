@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
+import orjson
+import yaml
 from homeassistant.core import HomeAssistant
 
 from ..const import CONF_ALLOW_DESTRUCTIVE, DOMAIN
@@ -56,7 +59,11 @@ _OPS = (*_READ_OPS, *_WRITE_OPS, *_DESTRUCTIVE_OPS)
                 "description": "Resource id (from resources list) for update/delete.",
             },
             "config": {
-                "description": "Dashboard config (object or YAML string) for save_config.",
+                "description": (
+                    "Dashboard config for save_config. Either a JSON object or "
+                    "a YAML/JSON string (parsed server-side). Must deserialize "
+                    "to a mapping with at least one of: views, strategy."
+                ),
             },
             "data": {
                 "type": "object",
@@ -93,7 +100,11 @@ async def ha_lovelace(
     if op in _DESTRUCTIVE_OPS:
         opts = hass.data.get(DOMAIN, {}).get("options", {})
         if not opts.get(CONF_ALLOW_DESTRUCTIVE, False):
-            raise ToolError(f"op '{op}' requires allow_destructive=true in integration options")
+            raise ToolError(
+                f"op '{op}' requires allow_destructive=true. Toggle it in "
+                "HA → Settings → Devices & Services → MCP Server (full) → "
+                "Configure (not a per-call argument)."
+            )
 
     if op == "info":
         return await _call(hass, "lovelace/info")
@@ -106,7 +117,7 @@ async def ha_lovelace(
         payload: dict[str, Any] = {}
         if url_path is not None:
             payload["url_path"] = url_path
-        return await _call(hass, "lovelace/config", payload)
+        return _materialize(await _call(hass, "lovelace/config", payload))
 
     if op == "resources":
         items = await _call(hass, "lovelace/resources")
@@ -114,8 +125,9 @@ async def ha_lovelace(
 
     if op == "save_config":
         if config is None:
-            raise ToolError("op=save_config requires 'config' (dict or YAML string)")
-        payload = {"config": config}
+            raise ToolError("op=save_config requires 'config' (dict or YAML/JSON string)")
+        config_dict = _coerce_config(config)
+        payload = {"config": config_dict}
         if url_path is not None:
             payload["url_path"] = url_path
         return _ok(await _call(hass, "lovelace/config/save", payload))
@@ -177,3 +189,41 @@ async def _call(hass: HomeAssistant, cmd: str, payload: dict[str, Any] | None = 
 
 def _ok(result: Any) -> dict[str, Any]:
     return {"ok": True, "result": result}
+
+
+def _coerce_config(config: Any) -> dict[str, Any]:
+    """Coerce save_config input to a dict.
+
+    Accepts a dict (returned as-is) or a YAML/JSON string (parsed via
+    yaml.safe_load — which also handles JSON). Anything else, or a
+    string that parses to a non-dict, raises ToolError so HA doesn't
+    persist a malformed payload that would brick the dashboard.
+    """
+    if isinstance(config, dict):
+        return config
+    if isinstance(config, str):
+        try:
+            parsed = yaml.safe_load(config)
+        except yaml.YAMLError as e:
+            raise ToolError(f"save_config: 'config' string is not valid YAML/JSON: {e}") from e
+        if not isinstance(parsed, dict):
+            raise ToolError(
+                "save_config: 'config' string must deserialize to a mapping "
+                f"(got {type(parsed).__name__})"
+            )
+        return parsed
+    raise ToolError(
+        f"save_config: 'config' must be dict or YAML/JSON string (got {type(config).__name__})"
+    )
+
+
+def _materialize(value: Any) -> Any:
+    """Convert orjson.Fragment (returned by HA's lovelace/config WS) to a dict.
+
+    HA's lovelace handler returns an ``orjson.Fragment`` wrapping pre-encoded
+    JSON bytes. Without materialization our JSON encoder falls back to
+    ``str(fragment)`` and clients see ``<orjson.Fragment object at 0x...>``.
+    """
+    if isinstance(value, orjson.Fragment):
+        return json.loads(orjson.dumps(value))
+    return value

@@ -97,6 +97,70 @@ async def test_save_config_with_payload(hass: MagicMock, capture: list) -> None:
     assert capture == [("lovelace/config/save", {"config": cfg, "url_path": "lovelace"})]
 
 
+async def test_save_config_yaml_string_is_parsed(hass: MagicMock, capture: list) -> None:
+    yaml_in = "views:\n  - title: WAN\n    path: wan\n"
+    await ha_lovelace(hass, op="save_config", url_path="wan", config=yaml_in)
+    assert capture == [
+        (
+            "lovelace/config/save",
+            {
+                "config": {"views": [{"title": "WAN", "path": "wan"}]},
+                "url_path": "wan",
+            },
+        )
+    ]
+
+
+async def test_save_config_json_string_is_parsed(hass: MagicMock, capture: list) -> None:
+    json_in = '{"views":[{"title":"A","path":"a"}]}'
+    await ha_lovelace(hass, op="save_config", config=json_in)
+    assert capture == [
+        (
+            "lovelace/config/save",
+            {"config": {"views": [{"title": "A", "path": "a"}]}},
+        )
+    ]
+
+
+async def test_save_config_rejects_non_mapping_string(hass: MagicMock, capture: list) -> None:
+    with pytest.raises(ToolError) as exc:
+        await ha_lovelace(hass, op="save_config", config="just a string")
+    assert "mapping" in str(exc.value)
+    assert capture == []
+
+
+async def test_save_config_rejects_invalid_yaml(hass: MagicMock, capture: list) -> None:
+    with pytest.raises(ToolError):
+        await ha_lovelace(hass, op="save_config", config="key: : :\n bad")
+    assert capture == []
+
+
+async def test_save_config_rejects_wrong_type(hass: MagicMock, capture: list) -> None:
+    with pytest.raises(ToolError):
+        await ha_lovelace(hass, op="save_config", config=42)
+    assert capture == []
+
+
+async def test_config_materializes_orjson_fragment(
+    hass: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import orjson
+
+    fragment = orjson.Fragment(b'{"views":[{"title":"X"}]}')
+
+    async def fake(_hass, _cmd, _payload=None):
+        return fragment
+
+    monkeypatch.setattr(lovelace_mod, "ws_call", fake)
+    result = await ha_lovelace(hass, op="config", url_path="x")
+    assert result == {"views": [{"title": "X"}]}
+
+
+async def test_config_passes_through_dict(hass: MagicMock, capture: list) -> None:
+    result = await ha_lovelace(hass, op="config", url_path="energy")
+    assert result == {"views": []}
+
+
 async def test_create_dashboard_requires_data(hass: MagicMock, capture: list) -> None:
     with pytest.raises(ToolError):
         await ha_lovelace(hass, op="create_dashboard")
