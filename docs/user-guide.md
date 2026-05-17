@@ -298,8 +298,45 @@ This is what lets an LLM keep itself up to date.
 
 ### `ha_lovelace`
 
-Read-only: list dashboards, fetch a dashboard's config, list extra
-resources.
+Reads + CRUD for storage-mode dashboards and resources.
+
+Read ops:
+
+```json
+{ "op": "info" }
+{ "op": "dashboards" }
+{ "op": "config", "url_path": "energy" }
+{ "op": "resources" }
+```
+
+Write ops (need `allow_write`):
+
+```json
+{ "op": "save_config", "url_path": "lovelace", "config": { "views": [ ... ] } }
+{ "op": "create_dashboard", "data": { "url_path": "test", "title": "Test", "icon": "mdi:home", "mode": "storage", "show_in_sidebar": true, "require_admin": false } }
+{ "op": "update_dashboard", "dashboard_id": "abcd1234", "data": { "title": "Renamed" } }
+{ "op": "create_resource", "data": { "res_type": "module", "url": "/local/my-card.js" } }
+{ "op": "update_resource", "resource_id": "abcd1234", "data": { "url": "/local/v2.js" } }
+```
+
+Destructive ops (need `allow_destructive`):
+
+```json
+{ "op": "delete_config", "url_path": "lovelace" }
+{ "op": "delete_dashboard", "dashboard_id": "abcd1234" }
+{ "op": "delete_resource", "resource_id": "abcd1234" }
+```
+
+Caveats:
+
+- Resource CRUD requires the resource collection to run in storage mode.
+  In YAML resource mode the create/update/delete commands aren't
+  registered and calls fail with `unknown WS command`.
+- `save_config` / `delete_config` only work on storage-mode dashboards;
+  YAML-mode dashboards raise `HomeAssistantError`.
+- `dashboard_id` and `resource_id` come from the `dashboards` and
+  `resources` list payloads — they are storage collection ids, not
+  `url_path`.
 
 ## Auth and webhooks
 

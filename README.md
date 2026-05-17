@@ -112,7 +112,7 @@ All tools live under the `ha_` prefix. List with `tools/list`; call with
 | `ha_helper`            | CRUD for input_boolean / input_number / input_select / input_text / input_datetime / counter / timer / schedule                      |
 | `ha_backup`            | Backup integration: info/details/generate/delete/restore + agents/config                                                             |
 | `ha_system_log`        | List/clear HA's in-memory system log                                                                                                 |
-| `ha_lovelace`          | Dashboards, dashboard config, resources                                                                                              |
+| `ha_lovelace`          | Dashboards / configs / resources — read + CRUD (save/delete configs, create/update/delete dashboards & resources)                    |
 | `ha_auth`              | Refresh + long-lived token mgmt (list/create/revoke)                                                                                 |
 | `ha_webhook`           | List registered webhooks                                                                                                             |
 | `ha_list_events`       | Event types + listener counts                                                                                                        |

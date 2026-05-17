@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) ·
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-17
+
+### Added
+
+- `ha_lovelace` write ops: `save_config`, `delete_config`,
+  `create_dashboard`, `update_dashboard`, `delete_dashboard`,
+  `create_resource`, `update_resource`, `delete_resource`. Writes gated
+  by `allow_write`; deletes additionally gated by `allow_destructive`.
+  Storage-mode only for resource CRUD; YAML-mode dashboards reject
+  save/delete (errors surface as `ToolError`).
+- `CLAUDE.md` repo guide for future Claude Code sessions.
+
 ## [1.0.0] - 2026-05-17
 
 Initial public release.
@@ -30,5 +42,6 @@ Initial public release.
 - Docs: quick start, user guide, developer guide, release process.
 - CI: hassfest + HACS Action + ruff + pytest on every push.
 
-[Unreleased]: https://github.com/czechbol/hass-mcp/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/czechbol/hass-mcp/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/czechbol/hass-mcp/releases/tag/v1.1.0
 [1.0.0]: https://github.com/czechbol/hass-mcp/releases/tag/v1.0.0
